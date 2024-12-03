@@ -6,6 +6,7 @@ class LinearRegression:
     """
     A custom implementation of Linear Regression with support for different 
     optimization methods and regularization techniques. 
+    Has support for multi-label Regression.
 
     Parameters:
     -----------
@@ -56,6 +57,7 @@ class LinearRegression:
 
         self.n_samples = None
         self.n_feats = None
+        self.n_labels = None
         self.w = None
         self.w_gradient = None
         self.b = None
@@ -69,8 +71,8 @@ class LinearRegression:
         """
         Initialize model parameters with zero values.
         """
-        self.w = np.zeros(self.n_feats)
-        self.b = 0
+        self.w = np.zeros((self.n_labels, self.n_feats))
+        self.b = np.zeros(self.n_labels)
 
     def print(self, x):
         """
@@ -89,14 +91,14 @@ class LinearRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_labels)
             Target values
         """
-        y_pred = np.dot(X, self.w) + self.b
-        self.w_gradient = 2 * np.dot((y_pred - y), X) / self.n_samples
-        self.b_gradient = np.mean(2 * (y_pred  - y))
+        y_pred = np.dot(X, self.w.T) + self.b
+        self.w_gradient = 2 * np.dot((y_pred - y).T, X) / self.n_samples # (n_labels, n_samples) * (n_samples, n_feats) => (n_labels, n_feats)
+        self.b_gradient = np.mean(2 * (y_pred  - y), axis = 0)
         if self.reg is not None:
             if self.reg[0] == "l1":
                 self.w_gradient += self.reg[1] / self.n_samples * np.sign(self.w)
@@ -112,9 +114,9 @@ class LinearRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_labels)
             Target values
         """
         if self.method == "gd":
@@ -134,14 +136,14 @@ class LinearRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_labels)
             Target values
         """
         for i in range(self.n_iters + 1):
             if self.verbose != 0 and i % self.verbose == 0:
-                y_pred = np.dot(X, self.w) + self.b
+                y_pred = np.dot(X, self.w.T) + self.b # (n_samples, n_feats) * (n_feats, n_labels)
                 rse = (y_pred - y) ** 2
                 self.print(f"Iter: {i}. RSS: {np.sum(rse)}. MSE: {np.mean(rse)}.")
             self._gradient_step(X, y)
@@ -153,9 +155,9 @@ class LinearRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_labels)
             Target values
 
         Returns:
@@ -167,6 +169,9 @@ class LinearRegression:
             self.scaler = type(self.scaler)()
             X = self.scaler.fit_transform(X)
         self.n_samples, self.n_feats = len(X), len(X[0])
+        if y.ndim == 1:
+            y = np.expand_dims(y, axis=-1)
+        self.n_labels = len(y[0])
         self._init_params()
         self.print("Starting training the model:\n")
         self._gradient_descent(X, y)
@@ -174,7 +179,7 @@ class LinearRegression:
         self.print(f"\nBest weights: {self.w}.")
         self.print(f"Best bias: {self.b}.")
         self.print("\nEval metrics on train data")
-        y_pred = np.dot(X, self.w) + self.b
+        y_pred = np.dot(X, self.w.T) + self.b # (n_samples, n_feats) * (n_feats, n_labels) => (n_samples, n_labels)
         self.print(regression_score(y, y_pred))
         self.is_fitted = True
 
@@ -184,7 +189,7 @@ class LinearRegression:
         assert self.is_fitted, "Please fit the model first."
         if self.scaler:
             X = self.scaler.transform(X)
-        return np.dot(X, self.w) + self.b
+        return np.dot(X, self.w.T) + self.b # (n_samples, n_feats) * (n_feats, n_labels)
 
 
 
@@ -194,10 +199,10 @@ class LinearRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
-            True target values
+        y : numpy.ndarray of shape (n_samples, n_labels)
+            Target values
 
         Returns:
         --------
@@ -211,6 +216,8 @@ class LinearRegression:
         """
         assert self.is_fitted, "Please fit the model first."
         y_pred = self.predict(X)
+        if y.ndim == 1:
+            y = np.expand_dims(y, axis=-1)
         return regression_score(y, y_pred)
 
 

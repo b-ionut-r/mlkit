@@ -1,13 +1,15 @@
 import numpy as np
-from mlkit.metrics import classification_score, log_loss
-from mlkit.special import sigmoid
+from mlkit.metrics import classification_score, multi_log_loss
+from mlkit.special import softmax
 from mlkit.preprocessing import MinMaxScaler
+from mlkit.preprocessing import LabelEncoder
 
-class LogisticRegression:
+class MultiLogisticRegression:
 
     """
-    A custom implementation of Logistic Regression with support for different 
+    A custom implementation of Multiclass Logistic Regression with support for different 
     optimization methods and regularization techniques.
+
 
     Parameters:
     -----------
@@ -21,11 +23,13 @@ class LogisticRegression:
         - Format: ("l2", lambda) for Ridge
         - Format: ("elasticnet", lambda, alpha) for combined L1/L2 penalty
     method : str, default = 'gd'
-        Optimization method. Either 'gd' (Gradient Descent) or 'sgd' (Stochastic Batch Gradient Descent).
+        Optimization method. Either 'gd' (Gradient Descent) or 'sgd' (Stochastic (Batch) Gradient Descent).
     batch_size : int, default = 128
         Mini batch size in one gradient step. Used only if method is 'sgd'.
     scaler : object, default = MinMaxScaler()
         Scaler transformer to use.
+    label_encoder : object, default = LabelEncoder()
+        Label encoder transformer to use.
     verbose : int, default = 1000
         Frequency of printing training progress (0 means no output).
     random_state : int, default = 42
@@ -39,7 +43,7 @@ class LogisticRegression:
                  method = "gd",
                  batch_size = 128,
                  scaler = MinMaxScaler(), 
-                 threshold = 0.5,
+                 label_encoder = LabelEncoder(),
                  verbose = 1000,
                  random_state = 42):
         
@@ -55,11 +59,12 @@ class LogisticRegression:
             self.scaler = type(scaler)()
         else:
             self.scaler = None
-        self.threshold = threshold
+        self.label_encoder = label_encoder
         self.verbose = verbose
 
         self.n_samples = None
         self.n_feats = None
+        self.n_classes = None
         self.w = None
         self.w_gradient = None
         self.b = None
@@ -72,8 +77,9 @@ class LogisticRegression:
         """
         Initialize model parameters with zero values.
         """
-        self.w = np.zeros(self.n_feats)
-        self.b = 0
+        # self.w = np.zeros((self.n_classes, self.n_feats))
+        self.w = np.random.randn(self.n_classes, self.n_feats) * 0.01
+        self.b = np.zeros(self.n_classes)
 
     def print(self, x):
         """
@@ -93,14 +99,14 @@ class LogisticRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_classes)
             Target values
         """
-        y_pred = sigmoid(np.dot(X, self.w) + self.b)
-        self.w_gradient = np.dot((y_pred - y), X) / self.n_samples
-        self.b_gradient = np.mean((y_pred  - y))
+        y_pred = softmax(np.dot(X, self.w.T) + self.b)
+        self.w_gradient = np.dot((y_pred - y).T, X) / self.n_samples # (n_classes, n_samples) * (n_samples, n_feats) => (n_classes, n_feats)
+        self.b_gradient = np.mean((y_pred - y), axis = 0)
         if self.reg is not None:
             if self.reg[0] == "l1":
                 self.w_gradient += self.reg[1] / self.n_samples * np.sign(self.w)
@@ -116,9 +122,9 @@ class LogisticRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_classes)
             Target values
         """
         if self.method == "gd":
@@ -139,112 +145,118 @@ class LogisticRegression:
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of (n_samples, n_classes)
             Target values
         """
         for i in range(self.n_iters + 1):
             if self.verbose != 0 and i % self.verbose == 0:
-                y_pred = sigmoid(np.dot(X, self.w) + self.b)
-                loss = log_loss(y, y_pred)
+                y_pred = softmax(np.dot(X, self.w.T) + self.b)
+                loss = multi_log_loss(y, y_pred)
                 self.print(f"Iter: {i}. Log Loss: {loss}.")
             self._gradient_step(X, y)
 
+
     def fit(self, X, y):
         """
-        Fit the logistic regression model to the training data.
+        Fit the multiclass logistic regression model to the training data.
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_classes)
             Target values
         """
-
     
         if self.scaler:
             self.scaler = type(self.scaler)() 
             X = self.scaler.fit_transform(X)
         self.n_samples, self.n_feats = len(X), len(X[0])
+
+        y_enc = self.label_encoder.fit_transform(y)
+        self.n_classes = self.label_encoder.n_labels
+
+
         self._init_params()
         self.print("Starting training the model:\n")
-        self._gradient_descent(X, y)
+        self._gradient_descent(X, y_enc)
         self.print("\nDone.")
         self.is_fitted = True
         self.print(f"\nBest weights: {self.w}.")
         self.print(f"Best bias: {self.b}.")
         self.print("\nEval metrics on train data:")
-        y_pred = (sigmoid(np.dot(X, self.w) + self.b) > self.threshold).astype(int)
+        y_pred = np.squeeze(np.argmax((softmax(np.dot(X, self.w.T) + self.b)), axis=-1))
+        y_pred = self.label_encoder.inverse_mapping(y_pred)
         self.print(classification_score(y, y_pred))
 
 
     def predict(self, X):
         """
-        Predicts the binary class labels for the given input data.
+        Predict the class labels for the given input data.
 
-        This method computes the predicted labels (0 or 1) based on the learned weights (w) and bias (b).
-        If a scaler is provided, the input data is first scaled using the scaler.
-
-        Args:
-            X (array-like): Input data to make predictions on, with shape (n_samples, n_features).
+        Parameters:
+        X (numpy.ndarray): The input data to predict, where each row represents a sample and each column represents a feature.
 
         Returns:
-            numpy.ndarray: Predicted binary labels (0 or 1) for each sample in the input data.
-        
+        numpy.ndarray: The predicted class labels for each sample in the input data.
+
         Raises:
-            AssertionError: If the model has not been fitted (self.is_fitted is False).
+        AssertionError: If the model is not fitted before calling this method.
         """
         assert self.is_fitted, "Please fit the model first."
         if self.scaler:
             X = self.scaler.transform(X)
-        return (sigmoid(np.dot(X, self.w) + self.b) > self.threshold).astype(int)
+        y_pred = np.squeeze(np.argmax((softmax(np.dot(X, self.w.T) + self.b)), axis=-1))
+        y_pred = self.label_encoder.inverse_mapping(y_pred)
+        return y_pred
+
 
 
     def predict_proba(self, X):
         """
-        Predicts the probability of the positive class (1) for the given input data.
+        Predict probability estimates for the given input data.
 
-        This method computes the probabilities for both class 0 and class 1, with the positive class probability 
-        being calculated using the sigmoid function on the linear combination of input features and learned parameters.
-        If a scaler is provided, the input data is first scaled using the scaler.
-
-        Args:
-            X (array-like): Input data to calculate probabilities for, with shape (n_samples, n_features).
+        Parameters:
+        -----------
+        X : array-like of shape (n_samples, n_features)
+            The input data for which to predict probability estimates.
 
         Returns:
-            numpy.ndarray: Probability estimates for both classes (0 and 1) for each sample, 
-                            with shape (n_samples, 2).
-        
+        --------
+        array-like of shape (n_samples, n_classes)
+            The predicted probability estimates for each class.
+
         Raises:
-            AssertionError: If the model has not been fitted (self.is_fitted is False).
+        -------
+        AssertionError
+            If the model is not fitted before calling this method.
         """
         assert self.is_fitted, "Please fit the model first."
         if self.scaler:
             X = self.scaler.transform(X)
-        p1 = sigmoid(np.dot(X, self.w) + self.b)
-        p0 = 1 - p1
-        return np.hstack([p0[:, np.newaxis], p1[:, np.newaxis]])
+        return softmax(np.dot(X, self.w.T) + self.b)
 
 
         
 
     def score(self, X, y):
         """
-        Compute binary classification performance metrics.
+        Computes multi-class classification performance metrics
+        (using MACRO average).
 
         Parameters:
         -----------
-        X : numpy.ndarray
+        X : numpy.ndarray of shape (n_samples, n_feats)
             Input features
-        y : numpy.ndarray
+        y : numpy.ndarray of shape (n_samples, n_classes)
             True target values
 
         Returns:
         --------
         dict
-            Binary classification performance metrics
+            Multiclass Classification performance metrics.
 
         Raises:
         -------
@@ -255,12 +267,12 @@ class LogisticRegression:
         y_pred = self.predict(X)
         return classification_score(y, y_pred)
 
+
     def get_params(self):
         return self.w, self.b
 
     def get_gradients(self):
         return self.w_gradient, self.b_gradient
-    
 
     def reset(self):
         self._init_params()

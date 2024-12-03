@@ -231,3 +231,26 @@ def log_loss(y_true, y_pred):
     y_pred = np.clip(y_pred, epsilon, 1-epsilon)
     return - np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
 
+
+
+def multi_log_loss(y_true, y_pred):
+    """
+    Computes the multi-class logarithmic loss, also known as cross-entropy loss.
+    Parameters:
+    y_true (numpy.ndarray): True labels in one-hot encoded format, shape (n_samples, n_classes).
+    y_pred (numpy.ndarray): Predicted probabilities, shape (n_samples, n_classes).
+    Returns:
+    float: The computed multi-class log loss.
+    Notes:
+    - The predicted probabilities (y_pred) are clipped to avoid log(0) by ensuring they are within the range [epsilon, 1 - epsilon].
+    - This function assumes that y_true is one-hot encoded.
+    """
+
+    # Avoid log(0) by clipping y_pred values between a small epsilon value (e.g., 1e-15) and 1 - epsilon
+    epsilon = 1e-15
+    y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
+    
+    # Compute the log loss
+    log_loss = -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
+    return log_loss
+
