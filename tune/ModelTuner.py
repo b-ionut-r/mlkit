@@ -118,7 +118,7 @@ class ModelTuner:
                                 show_progress_bar = self.show_progress_bar)
             
             best_params = self.study.best_params
-            if reg_mode in best_params:
+            if "reg_mode" in best_params:
                 reg_mode, reg_strength, reg_ratio = (best_params.pop("reg_mode"), best_params.pop("reg_strength"), 
                                                     best_params.pop("reg_ratio"))
                 if reg_mode == "elasticnet":
