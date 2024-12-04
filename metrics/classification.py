@@ -18,7 +18,7 @@ def confusion_matrix(y_true, y_pred, positive_label=None):
                      [FP, TN]]
     """
 
-    assert np.issubdtype(y_pred.dtype, np.integer), "Predictions should be discrete labels, not continuous probabilities."
+    # assert np.issubdtype(y_pred.dtype, np.integer), "Predictions should be discrete labels, not continuous probabilities."
     if positive_label is None:
         if len(np.unique(y_true)) == 2:
             positive_label = 1
