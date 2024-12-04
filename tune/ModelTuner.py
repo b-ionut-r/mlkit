@@ -1,4 +1,6 @@
-from mlkit.linear_model import LinearRegression, LogisticRegression
+from mlkit.linear_model import (LinearRegression, LogisticRegression, 
+                                MultiLogisticRegression)
+from mlkit.neighbors import KNeighborsClassifier
 from mlkit.preprocessing import MinMaxScaler, StandardScaler
 from mlkit.model_selection import KFold
 import numpy as np
@@ -25,7 +27,8 @@ logger.addHandler(null_handler)
 class ModelTuner:
 
     def __init__(self, 
-                 model: Union[LinearRegression, LogisticRegression], 
+                 model: Union[LinearRegression, LogisticRegression, MultiLogisticRegression, 
+                              KNeighborsClassifier], 
                  val_splitter = KFold(n_splits=5),
                  hyperparams_space = {
                     "n_iters": (1000, 15000, 2000, "int"), 
@@ -72,18 +75,21 @@ class ModelTuner:
                     elif value[-1] == "cat":
                         params[key] = trial.suggest_categorical(key, value[0])
 
-                reg_mode, reg_strength, reg_ratio = params.pop("reg_mode"), params.pop("reg_strength"), params.pop("reg_ratio")
-                if reg_mode == "elasticnet":
-                    params["reg"] = (reg_mode, reg_strength, reg_ratio)
-                else:
-                    params["reg"] = (reg_mode, reg_strength)
+                if "reg_mode" in params:       
+                    reg_mode, reg_strength, reg_ratio = params.pop("reg_mode"), params.pop("reg_strength"), params.pop("reg_ratio")
+                    if reg_mode == "elasticnet":
+                        params["reg"] = (reg_mode, reg_strength, reg_ratio)
+                    else:
+                        params["reg"] = (reg_mode, reg_strength)
 
 
                 model = type(self.model)(**params)
                 if isinstance(model, LinearRegression):
                     metric = "mae"
-                elif isinstance(model, LogisticRegression):
+                elif isinstance(model, (LogisticRegression, KNeighborsClassifier)):
                     metric = "accuracy"
+                elif isinstance(model, MultiLogisticRegression):
+                    metric = "f1"
 
 
                 self.val_splitter = type(self.val_splitter)(**vars(self.val_splitter))
@@ -112,12 +118,13 @@ class ModelTuner:
                                 show_progress_bar = self.show_progress_bar)
             
             best_params = self.study.best_params
-            reg_mode, reg_strength, reg_ratio = (best_params.pop("reg_mode"), best_params.pop("reg_strength"), 
-                                                 best_params.pop("reg_ratio"))
-            if reg_mode == "elasticnet":
-                best_params["reg"] = (reg_mode, reg_strength, reg_ratio)
-            else:
-                best_params["reg"] = (reg_mode, reg_strength)
+            if reg_mode in best_params:
+                reg_mode, reg_strength, reg_ratio = (best_params.pop("reg_mode"), best_params.pop("reg_strength"), 
+                                                    best_params.pop("reg_ratio"))
+                if reg_mode == "elasticnet":
+                    best_params["reg"] = (reg_mode, reg_strength, reg_ratio)
+                else:
+                    best_params["reg"] = (reg_mode, reg_strength)
             print(f"\nFinished tuning. Best params are:\n{best_params}")
 
             print("\nRetraining best model on entire dataset.")
