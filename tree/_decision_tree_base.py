@@ -6,6 +6,7 @@ from mlkit.metrics import classification_score
 from ._node import Node
 from ._level import Level
 from typing import Union, Optional, Literal, List
+import warnings
 
 
 class DecisionTreeBase:
@@ -181,19 +182,22 @@ class DecisionTreeBase:
         Returns:
         None
         """
-        graph = nx.DiGraph()
-        self.build_graph(self.parent, graph, feature_names=feature_names)
-        pos = nx.nx_agraph.graphviz_layout(graph, prog="dot")
 
-        plt.figure(figsize=(12, 8))
-        nx.draw(
-            graph,
-            pos,
-            with_labels=True,
-            labels=nx.get_node_attributes(graph, "label"),
-            node_size=3000,
-            node_color="lightblue",
-            font_size=5,
-            font_weight="bold",
-        )
-        plt.show()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            graph = nx.DiGraph()
+            self.build_graph(self.parent, graph, feature_names=feature_names)
+            pos = nx.nx_agraph.graphviz_layout(graph, prog="dot")
+
+            plt.figure(figsize=(12, 8))
+            nx.draw(
+                graph,
+                pos,
+                with_labels=True,
+                labels=nx.get_node_attributes(graph, "label"),
+                node_size=3000,
+                node_color="lightblue",
+                font_size=5,
+                font_weight="bold",
+            )
+            plt.show()

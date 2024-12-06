@@ -3,6 +3,8 @@ from scipy.ndimage import shift
 import math
 from mlkit.metrics.classification import multi_log_loss
 from typing import Optional, Literal, Union, List
+from collections import Counter
+import warnings
 
 class Node:
 
@@ -110,9 +112,20 @@ class Node:
                 imp -= (occurrence / len(self.y)) ** 2
 
         elif self.split_criteria["criterion"] == "log_loss":
-            class_counts = np.bincount(self.y)  # Count occurrences of each class
-            probabilities = class_counts / self.n_samples  # Compute probabilities for each class
-            imp = multi_log_loss(self.y, probabilities) # multi_log_loss impurity
+            # Ignore specific warnings within this block
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                class_counts = Counter(self.y)
+                class_probabilities = {k: v / self.n_samples for k, v in class_counts.items()}
+                probabilities = np.zeros((self.n_samples, len(class_probabilities)))
+                for i in range(self.n_samples):
+                    for class_label, prob in class_probabilities.items():
+                        probabilities[i, list(class_counts.keys()).index(class_label)] = prob
+                # One-hot encode the true labels
+                y_true_one_hot = np.zeros((self.n_samples, len(class_counts)))
+                for i, label in enumerate(self.y):
+                    y_true_one_hot[i, list(class_counts.keys()).index(label)] = 1
+                imp = multi_log_loss(y_true_one_hot, probabilities)
 
         elif self.split_criteria["criterion"] == "mean_squared_error":
             pred_val = np.mean(self.y)
