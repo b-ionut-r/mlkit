@@ -1,3 +1,3 @@
-from .ModelTuner import ModelTuner
+from ._model_tuner import ModelTuner
 
 __all__ = ["ModelTuner"]

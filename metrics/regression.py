@@ -87,8 +87,16 @@ def r2_score(y_true, y_pred):
 
     """
 
+    # s1 = np.sum((y_pred - y_true) ** 2)
+    # s2 = np.sum((y_true - y_true.mean()) ** 2) + 1e-8 # for numerical stability
+    # return 1 - s1 / s2
+
     s1 = np.sum((y_pred - y_true) ** 2)
-    s2 = np.sum((y_true - y_true.mean()) ** 2) + 1e-8 # for numerical stability
+    s2 = np.sum((y_true - y_true.mean()) ** 2)
+    
+    if s2 == 0:
+        return 1.0  # Return 1 if the variance of y_true is zero (perfect prediction case)
+    
     return 1 - s1 / s2
 
 
