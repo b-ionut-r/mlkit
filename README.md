@@ -1,6 +1,7 @@
 # MLKit 🤖
 
 MLKit is a Python library featuring machine learning algorithms implemented from scratch, inspired by the concepts and functionality of popular libraries like Scikit-Learn.
+Please note that this repo is a work in progress, my first project of this magnitude, and its main purpose is educational.
 
 ## Installation
 
