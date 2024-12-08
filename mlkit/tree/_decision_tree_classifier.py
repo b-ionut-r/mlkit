@@ -18,7 +18,7 @@ class DecisionTreeClassifier(DecisionTreeBase):
                  min_samples_split: Optional[Union[int, float]] = 2,
                  min_samples_leaf: Optional[Union[int, float]] = 1,
                  max_features: Optional[Union[int, float, Literal["sqrt", "log2"]]] = None,
-                 random_state: Optional[int] = 42,
+                 random_state: Optional[int] = None,
                  max_leaf_nodes: Optional[int] = None,
                  min_info_gain: Optional[float] = 0.0):
         """
@@ -31,7 +31,7 @@ class DecisionTreeClassifier(DecisionTreeBase):
             min_samples_split (int or float, optional): The minimum number of samples required to split an internal node. Default is 2.
             min_samples_leaf (int or float, optional): The minimum number of samples required to be at a leaf node. Default is 1.
             max_features (int, float, or str, optional): The number of features to consider when looking for the best split. Default is None, which means all features are considered.
-            random_state (int, optional): The seed used by the random number generator. Default is 42.
+            random_state (int, optional): The seed used by the random number generator. Default is None.
             max_leaf_nodes (int, optional): The maximum number of leaf nodes in the tree. Default is None.
             min_info_gain (float, optional): The minimum information gain required to split a node. Default is 0.0.
         """

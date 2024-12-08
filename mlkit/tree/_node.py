@@ -18,7 +18,8 @@ class Node:
                  min_samples_split: Optional[Union[int, float]] = 2,
                  min_samples_leaf: Optional[Union[int, float]] = 1,
                  max_features: Optional[Union[int, float, Literal["sqrt", "log2"]]] = None,
-                 min_info_gain: Optional[float] = 0.0):
+                 min_info_gain: Optional[float] = 0.0,
+                 random_state: Optional[int] = None):
         
         """
         Initializes a Node object for splitting data.
@@ -32,6 +33,7 @@ class Node:
             min_samples_leaf: Minimum samples required in each leaf.
             max_features: Maximum features to consider for splitting.
             min_info_gain: Minimum information gain required for a split.
+            random_state: Random seed used to ensure deterministic behavior.
         """
 
         self.X = X
@@ -46,7 +48,8 @@ class Node:
             "min_samples_split": min_samples_split,
             "min_samples_leaf": min_samples_leaf,
             "max_features": max_features,
-            "min_info_gain": min_info_gain
+            "min_info_gain": min_info_gain,
+            "random_state": random_state
         }
         self.split_criteria_ = self.split_criteria.copy()
         self._validate_split_criteria()
@@ -96,6 +99,9 @@ class Node:
         assert self.split_criteria["min_info_gain"] >= 0, (
             "min_info_gain must be a positive integer"
         )
+
+        if self.split_criteria["random_state"]:
+            np.random.seed(self.split_criteria["random_state"])
 
 
 

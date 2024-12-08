@@ -35,8 +35,9 @@ class DecisionTreeBase:
     max_features : int, float or {'sqrt', 'log2'}, optional, default=None
         The number of features to consider when looking for the best split. If None, all features are considered. 
 
-    random_state : int, optional, default=42
+    random_state : int, optional, default=None
         Seed used by the random number generator.
+        If None, non-deterministic behaviour will be used.
 
     max_leaf_nodes : int, optional, default=None
         The maximum number of leaf nodes in the tree.
@@ -53,7 +54,7 @@ class DecisionTreeBase:
         min_samples_split: Optional[Union[int, float]] = 2,
         min_samples_leaf: Optional[Union[int, float]] = 1,
         max_features: Optional[Union[int, float, Literal["sqrt", "log2"]]] = None,
-        random_state: Optional[int] = 42,
+        random_state: Optional[int] = None,
         max_leaf_nodes: Optional[int] = None,
         min_info_gain: Optional[float] = 0.0):
         
@@ -67,7 +68,8 @@ class DecisionTreeBase:
         self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
         self.random_state = random_state
-        np.random.seed(random_state)
+        if random_state:
+            np.random.seed(random_state)
         self.max_leaf_nodes = max_leaf_nodes
         self.min_info_gain = min_info_gain
 
