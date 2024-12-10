@@ -99,6 +99,37 @@ class KMeans:
         self.inertias_iters_ = []
         self.labels_ = None
 
+
+    def _kmeans_plus_plus_init(self, X:np.ndarray) -> np.ndarray:
+
+        """
+        Implements KMeans++ initialization.
+        
+        Parameters:
+        X : ndarray of shape (n_samples, n_features)
+            The input data.
+        k : int
+            The number of clusters.
+        
+        Returns:
+        centroids : ndarray of shape (k, n_features)
+            The initialized centroids.
+        """
+        
+        # Step 1: Choose the first centroid randomly from the dataset
+        self.centroids_[0] = X[np.random.randint(self.n_samples_)]
+        
+        for i in range(1, self.n_clusters):
+            # Step 2: Compute the squared distances from each point to its nearest centroid
+            distances = np.min([np.sum((X - centroid)**2, axis=1) for centroid in self.centroids_[:i]], axis=0)
+            
+            # Step 3: Choose the next centroid with a probability proportional to the squared distances
+            probabilities = distances / np.sum(distances)
+            next_centroid_idx = np.random.choice(self.n_samples_, p=probabilities)
+            self.centroids_[i] = X[next_centroid_idx]
+        
+
+
     def _generate_clusters_from_centroids(self, X: np.ndarray) -> np.ndarray:
         """
         Assign each sample to the nearest centroid.
@@ -116,6 +147,7 @@ class KMeans:
         distances = np.array([[distance(x, self.centroids_[k]) for k in range(self.n_clusters)] for x in X])
         labels = np.argmin(distances, axis=-1)
         return labels
+
 
     def _get_clusters_means(self, X: np.ndarray) -> np.ndarray:
         """
@@ -163,6 +195,7 @@ class KMeans:
                 inertia += np.sum([distance(x, self.centroids_[k]) ** 2 for x in X_k])
         return inertia
 
+
     def fit(self, X: np.ndarray) -> Self:
         """
         Compute KMeans clustering.
@@ -192,8 +225,7 @@ class KMeans:
         for i in iterable:
             np.random.seed(self.seeds_[i])
             if self.init == "k-means++":
-                self.centroids_ = np.random.uniform(X.min(axis=0), X.max(axis=0), 
-                                                    (self.n_clusters, self.n_feats_))
+                self._kmeans_plus_plus_init(X)
             elif self.init == "random":
                 self.centroids_ = X[np.random.choice(self.n_samples_, self.n_clusters, replace=False)]
             elif isinstance(self.init, np.ndarray):
